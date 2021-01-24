@@ -33,6 +33,8 @@ void TitleScene::onInitializeScene()
 	ship->setPosition(620, 300);
 	addChild(ship);
 
+	/*Why are there two nodes for the start button?
+	Ah there is one for the rectangle shape and one for the text on top of it*/
 	std::shared_ptr<gbh::ShapeNode> startButton = std::make_shared<gbh::ShapeNode>(sf::RectangleShape(sf::Vector2f(1280, 60)));
 	startButton->setPosition(640, 560);
     startButton->setOrigin(0.5f, 0.5f);
@@ -64,9 +66,12 @@ void TitleScene::onMouseEvent(sf::Event& event)
 	{
 		std::shared_ptr<gbh::Node> node = this->getNodeAtViewPoint((float)event.mouseButton.x, (float)event.mouseButton.y);
 
-		if (node)
+		if (node->getName()=="StartButton")
 		{
-			std::cout << "Clicked On: " << node->getName() << "\n";
+			//If clicking on some part of the start button, go to the scene maingame
+			gbh::Game::getInstance().changeScene("maingame");
+			
+			//Old code that used to be here - std::cout << "Clicked On: " << node->getName() << "\n";
 		}
 	}
 }
