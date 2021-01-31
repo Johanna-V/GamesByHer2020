@@ -20,4 +20,6 @@ protected:
 private:
 	sf::Font m_robotoFont;
 	sf::Music m_titleMusic;
+
+	std::shared_ptr<gbh::SpriteNode> m_asteroid3;
 };

@@ -5,5 +5,11 @@
 class MainGameScene : public gbh::Scene {
 protected:
 	void onInitializeScene() override;
-	};
+
+private:
+	std::shared_ptr<gbh::SpriteNode> m_playerShip;
+
+	//For the example that did not work
+	//std::shared_ptr<gbh::SpriteNode> m_test;
+};
 

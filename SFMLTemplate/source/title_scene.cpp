@@ -9,8 +9,10 @@
 
 const std::string kTitleMusic = "../assets/music/titlescreen.ogg";
 const std::string kTitleScreenFont = "../assets/fonts/roboto-regular.ttf";
-const std::string kTitleScreenBackground = "../assets/gfx/starfield-01.png";
+const std::string kTitleScreenBackground = "../assets/gfx/space-background-01.png";
+//the old background const std::string kTitleScreenBackground = "../assets/gfx/starfield-01.png";
 const std::string kPlayerShip = "../assets/gfx/player-ship.png";
+
 
 
 void TitleScene::onInitializeScene()
@@ -18,10 +20,17 @@ void TitleScene::onInitializeScene()
 	m_robotoFont.loadFromFile(kTitleScreenFont);
 	m_titleMusic.openFromFile(kTitleMusic);
 	m_titleMusic.setVolume(25);
+	
 
 	std::shared_ptr<gbh::SpriteNode> spriteNode = std::make_shared<gbh::SpriteNode>(kTitleScreenBackground);
 	spriteNode->setName("Background");
 	addChild(spriteNode);
+
+	/*A rotating asteroid ornamenting the title scene*/
+	m_asteroid3 = std::make_shared<gbh::SpriteNode>("../assets/gfx/asteroid-medium-03.png");
+	m_asteroid3->setPosition(1000, 200);
+	m_asteroid3->setOrigin(0.5f, 0.5f);
+	addChild(m_asteroid3);
 
 	std::shared_ptr<gbh::TextNode> textNode = std::make_shared<gbh::TextNode>("Space Race", m_robotoFont, 60);
     textNode->setOrigin(0.5f, 0.5f);
@@ -43,7 +52,11 @@ void TitleScene::onInitializeScene()
 	addChild(startButton);
 
 	std::shared_ptr<gbh::TextNode> startNode = std::make_shared<gbh::TextNode>("Start Game", m_robotoFont);
+	/*This position turned out outside of the screen after setOrigin was changed to 0.5f everywhere, 
+	so I changed the origin back for this text since I think it makes more sense for text in a corner. 
+	Text will change its position depending on how many characters it contains if the origin is set to the middle of it, and that is risky in a corner*/
 	startNode->setPosition(20, 10);
+	startNode->setOrigin(0.0f, 0.0f);
 	startNode->setName("StartButton");
 	startButton->addChild(startNode);
 }
@@ -57,6 +70,10 @@ void TitleScene::onUpdate(double deltaTime)
     {
         titleNode->move(0, 50.f * (float)deltaTime);
     }
+
+	/*Rotates the asteroid*/
+	const float degreesPerSecond = 45.0f;
+	m_asteroid3->rotate(degreesPerSecond * deltaTime);
 }
 
 
