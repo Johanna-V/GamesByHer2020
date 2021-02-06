@@ -40,6 +40,7 @@ void TitleScene::onInitializeScene()
 
 	std::shared_ptr<gbh::SpriteNode> ship = std::make_shared<gbh::SpriteNode>(kPlayerShip);
 	ship->setPosition(620, 300);
+	ship->rotate(180);
 	addChild(ship);
 
 	/*Why are there two nodes for the start button?

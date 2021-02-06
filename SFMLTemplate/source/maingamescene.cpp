@@ -1,4 +1,5 @@
 #include "maingamescene.h"
+#include "sfml-engine/mathutils.h"
 #include <iostream>
 
 const std::string cMainbackground = "../assets/gfx/space-background-01.png";
@@ -48,5 +49,47 @@ void MainGameScene::onInitializeScene() {
 	m_playerShip->setPhysicsBody(getPhysicsWorld()->createBox(shipSize * 0.5f));
 	m_playerShip->getPhysicsBody()->setLinearDamping(2.0f);
 	m_playerShip->getPhysicsBody()->setFixedRotation(true);
+	//The ship was turned the wrong way originally so here we point the front up
+	m_playerShip->rotate(180);
 	addChild(m_playerShip);
+}
+
+/*Delta time describes the time difference between the previous frame that was drawn
+and the current frame, and makes sure that movement speed will not change depending 
+on what fps the current player's display can handle. This is how we make things tick 
+with a more "reliable" framerate, to move something around the screen.*/
+void MainGameScene::onUpdate(double deltaTime)
+{
+	static const float acceleration = 2000.0f;
+
+	sf::Vector2f moveDirection;
+	const float degreesPerSecond = 85.0f;
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+		//Old: moveDirection.y -= 1.0f;
+		/*New: to get car-like movement, use the forwardVector() function from node.cpp, 
+		which uses sine and cosine to translate the angle/rotation of the ship into 
+		two forces pushing the ship forward through the x-y grid*/
+		moveDirection = m_playerShip->forwardVector();
+	}
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+		//Old: moveDirection.y += 1.0f;
+		//New: to get car-like movement:
+		moveDirection = m_playerShip->backwardVector();
+	}
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+		//Old: moveDirection.x -= 1.0f;
+		m_playerShip->rotate(-(degreesPerSecond)*deltaTime);
+	}
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+		//Old: moveDirection.x += 1.0f;
+		m_playerShip->rotate(+(degreesPerSecond)*deltaTime);
+	}
+
+	//This makes sure that the ship does not go faster when going diagonally
+	moveDirection = gbh::math::normalize(moveDirection);
+	m_playerShip->getPhysicsBody()->applyForceToCenter(moveDirection * acceleration);
 }
