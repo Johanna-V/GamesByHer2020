@@ -52,6 +52,13 @@ void MainGameScene::onInitializeScene() {
 	//The ship was turned the wrong way originally so here we point the front up
 	m_playerShip->rotate(180);
 	addChild(m_playerShip);
+
+	/*This makes the camera follow the ship around*/
+	m_followCamera = std::make_shared<FollowCameraNode>();
+	m_followCamera->setTarget(m_playerShip);
+	m_followCamera->setPosition(640, 360);
+	addChild(m_followCamera);
+	setCamera(m_followCamera);
 }
 
 /*Delta time describes the time difference between the previous frame that was drawn
