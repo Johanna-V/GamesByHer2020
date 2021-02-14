@@ -1,12 +1,84 @@
 #include "maingamescene.h"
 #include "sfml-engine/mathutils.h"
+#include <nlohmann/json.hpp>
 #include <iostream>
 
 const std::string cMainbackground = "../assets/gfx/space-background-01.png";
 const std::string kPlayerShip = "../assets/gfx/player-ship.png";
+const std::string kMainScreenFont = "../assets/fonts/roboto-regular.ttf";
+const std::string kCheckPointSprite = "../assets/gfx/checkpoint.png";
+
+//Color of the checkpoints
+static const sf::Color kInactiveCheckpoint = sf::Color(255, 255, 255, 64);
+static const sf::Color kNextCheckpoint = sf::Color(64, 64, 255, 192);
+static const sf::Color kDoneCheckpoint = sf::Color(64, 255, 64, 128);
+
+std::string filename = "../assets/levels/level_01.json";
+
+void MainGameScene::onShowScene() {
+	loadLevel("../assets/levels/level_01.json");
+	advanceCheckpoints();
+
+	//m_gameMusic.play();
+}
+
+void MainGameScene::onHideScene() {
+	//m-gameMusic.stop();
+}
+
+/*Open a json file using the special json C++ parsing library nlohmann, catch exceptions.
+If checkpoints (that we load to) is an array, iterate through it, get the xy coordinates from the file
+and apply physics and everything we used to do in "oninitializescene" for the checkpoints*/
+void MainGameScene::loadLevel(const std::string& filename)
+{
+	std::ifstream file(filename);
+	nlohmann::json jsonFile;
+
+	//Some JSON parsing error handling
+	try
+	{
+		jsonFile = nlohmann::json::parse(file);
+	}
+	catch (const std::exception& ex)
+	{
+		std::cout << "Failed to load level from file: " << filename << ": " << ex.what() << "\n";
+		return;
+	}
+
+	nlohmann::json checkpoints = jsonFile["checkpoints"];
+
+	if (checkpoints.is_array())
+	{
+		for (int i = 0; i < checkpoints.size(); ++i)
+		{
+			float x = checkpoints[i]["x"].get<float>();
+			float y = checkpoints[i]["y"].get<float>();
+
+			std::shared_ptr<gbh::SpriteNode> node = std::make_shared<gbh::SpriteNode>(kCheckPointSprite);
+			node->setColor(kInactiveCheckpoint);
+			node->setPhysicsBody(getPhysicsWorld()->createCircle(50));
+			node->getPhysicsBody()->makeSensor();
+			node->getPhysicsBody()->setEnabled(false);
+			node->setPosition(x, y);
+			node->setName("checkpoint");
+
+			node->setBeginContactCallback([this](const gbh::PhysicsContact& contact) {
+				if (contact.containsNode(m_playerShip.get()))
+				{
+					advanceCheckpoints();
+				}
+				});
+
+			m_checkPoints.push_back(node);
+			addChild(node);
+		}
+
+		m_currentCheckPoint = -1;
+	}
+}
 
 /*Overriding the function that is empty in the base class "Scene", 
-telling it to print some text instead of doing nothing, for the MainGameScene class*/
+telling it to do lots of things instead of doing nothing, for the MainGameScene class*/
 void MainGameScene::onInitializeScene() {
 
 	//Draw the background sprite
@@ -44,7 +116,7 @@ void MainGameScene::onInitializeScene() {
 	m_playerShip->setPosition(640, 360);
 	//instead of setOrigin() that we can not use for physics bodies:
 	m_playerShip->setScale(0.5f, 0.5f); 
-	/*attaches the ship to a physicsbody and creates a box with the size variable we made for the ship:
+	/*attaches the ship to a physics body and creates a box with the size variable we made for the ship:
 	Not sure what the last '0.5f' does. Somehow setting orgin/scale? 'Physicsmaterial'? Some dark magic of math?*/
 	m_playerShip->setPhysicsBody(getPhysicsWorld()->createBox(shipSize * 0.5f));
 	m_playerShip->getPhysicsBody()->setLinearDamping(2.0f);
@@ -59,6 +131,83 @@ void MainGameScene::onInitializeScene() {
 	m_followCamera->setPosition(640, 360);
 	addChild(m_followCamera);
 	setCamera(m_followCamera);
+
+	//Adds a timer overlay text
+	m_robotoFont.loadFromFile(kMainScreenFont);
+	m_timerText = std::make_shared<gbh::TextNode>("0", m_robotoFont, 24);
+	m_timerText->setOrigin(1.0f, 1.0f);		// Set origin to bottom right
+	m_timerText->setPosition(1270, 700);	// Move to bottom right of screen
+	getOverlay().addChild(m_timerText);		// Add to overlay so that it 'sticks' to the screen
+
+	//The hard-coded version of adding checkpoints without using a json file for the coordinates. 
+	//Most is moved to onSceneShow() but I can't remove the below for some reason
+	std::vector<sf::Vector2f> checkPointPositions;
+	checkPointPositions = {
+		sf::Vector2f(640.0f, 720.0f),
+		sf::Vector2f(1240.0f, 200.0f),
+		sf::Vector2f(80.0f, 400.0f),
+	};
+
+	//A for-loop going through each checkpoint position, setting up that checkpoint's properties,
+	//adding it to a member vector for storage and then drawing/adding the child to the scene
+	for (int i = 0; i < checkPointPositions.size(); ++i) {
+		
+		sf::Vector2f position = checkPointPositions[i];
+
+		std::shared_ptr<gbh::SpriteNode> node = std::make_shared<gbh::SpriteNode>(kCheckPointSprite);
+		node->setColor(kInactiveCheckpoint);
+		node->setPhysicsBody(getPhysicsWorld()->createCircle(50));
+		node->getPhysicsBody()->makeSensor();
+		node->getPhysicsBody()-> setEnabled(false);
+		node->setPosition(checkPointPositions[i]);
+		node->setName("checkpoint");
+
+		m_checkPoints.push_back(node);
+		addChild(node);
+
+	}
+	//A first call to make sure that we have one checkpoint that is enabled
+	advanceCheckpoints();
+}
+
+/*If the ship collides with a checkpoint, the checkpoints should be advanced*/
+void MainGameScene::onBeginPhysicsContact(const gbh::PhysicsContact& contact)
+{
+	/*Here I had to peek on someone else's solution since the playership could not be converted
+	The trick was then to add .get() . I have no idea why...*/
+	if (contact.containsNode(m_playerShip.get())) {
+		gbh::Node* otherNode = contact.otherNode(m_playerShip.get());
+		if (otherNode && otherNode->getName() == "checkpoint") {
+			advanceCheckpoints();
+		}
+	}
+}
+
+/*If this is called, change the current checkpoint's color to done and disable its Physicsbody.
+Then advance which the current checkpoint is. That one, we enable and give the 
+"next checkpoint"-color*/
+void MainGameScene::advanceCheckpoints()
+{
+	if (m_currentCheckPoint >= 0 && m_currentCheckPoint < m_checkPoints.size())
+	{
+		m_checkPoints[m_currentCheckPoint]->setColor(kDoneCheckpoint);
+		m_checkPoints[m_currentCheckPoint]->getPhysicsBody()->setEnabled(false);
+		m_currentCheckPoint++;
+	}
+	else
+	{
+		m_currentCheckPoint = 0;
+	}
+
+	if (m_currentCheckPoint < m_checkPoints.size())
+	{
+		m_checkPoints[m_currentCheckPoint]->setColor(kNextCheckpoint);
+		m_checkPoints[m_currentCheckPoint]->getPhysicsBody()->setEnabled(true);
+	}
+	else
+	{
+		std::cout << "Completed Course! \n";
+	}
 }
 
 /*Delta time describes the time difference between the previous frame that was drawn
@@ -67,6 +216,10 @@ on what fps the current player's display can handle. This is how we make things 
 with a more "reliable" framerate, to move something around the screen.*/
 void MainGameScene::onUpdate(double deltaTime)
 {
+	//For tracking play time
+	m_playerTime += deltaTime;
+	m_timerText->setString(std::to_string(m_playerTime));
+
 	static const float acceleration = 2000.0f;
 
 	sf::Vector2f moveDirection;
