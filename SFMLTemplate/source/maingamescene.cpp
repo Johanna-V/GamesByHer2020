@@ -1,5 +1,6 @@
 #include "maingamescene.h"
 #include "sfml-engine/mathutils.h"
+#include "sfml-engine/game.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
@@ -206,6 +207,7 @@ void MainGameScene::advanceCheckpoints()
 	}
 	else
 	{
+		m_courseFinished = true;
 		std::cout << "Completed Course! \n";
 	}
 }
@@ -216,14 +218,25 @@ on what fps the current player's display can handle. This is how we make things 
 with a more "reliable" framerate, to move something around the screen.*/
 void MainGameScene::onUpdate(double deltaTime)
 {
-	//For tracking play time
-	m_playerTime += deltaTime;
-	m_timerText->setString(std::to_string(m_playerTime));
+	//For tracking and advancing play time
+	if (m_courseFinished == false) {
+		m_playerTime += deltaTime;
+		m_timerText->setString(std::to_string(m_playerTime));
+	}
 
+	//Stopping the timer and going back to the title scene with space after completing the course
+	if (m_courseFinished == true) {
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+			gbh::Game::getInstance().changeScene("title");
+		}
+
+	}
+	
 	static const float acceleration = 2000.0f;
 
 	sf::Vector2f moveDirection;
 	const float degreesPerSecond = 85.0f;
+
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
 		//Old: moveDirection.y -= 1.0f;

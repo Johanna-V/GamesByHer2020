@@ -23,6 +23,7 @@ private:
 	int m_currentCheckPoint = -1;
 	double m_playerTime;
 	std::shared_ptr<gbh::TextNode> m_timerText;
+	bool m_courseFinished = false;
 
 	sf::Font m_robotoFont;
 	
